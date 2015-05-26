@@ -1,26 +1,26 @@
 <?xml version="1.0"?>
 <extension key="com.giantrabbit.hookextensions" type="module">
   <file>hookextensions</file>
-  <name>FIXME</name>
-  <description>FIXME</description>
+  <name>HookExtensions</name>
+  <description>Provides some easier to use hooks for CiviCRM.</description>
   <license>AGPL-3.0</license>
   <maintainer>
     <author>Peter Haight</author>
     <email>peterh@giantrabbit.com</email>
   </maintainer>
   <urls>
-    <url desc="Main Extension Page">http://FIXME</url>
-    <url desc="Documentation">http://FIXME</url>
-    <url desc="Support">http://FIXME</url>
+    <url desc="Main Extension Page">http://github.com/giant-rabbit/com.giantrabbit.hookextensions</url>
+    <url desc="Documentation">http://github.com/giant-rabbit/com.giantrabbit.comhookextensions</url>
+    <url desc="Support">http://github.com/giant-rabbit/com.giantrabbit.comhookextensions</url>
     <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
   </urls>
   <releaseDate>2015-05-26</releaseDate>
   <version>1.0</version>
   <develStage>alpha</develStage>
   <compatibility>
-    <ver>4.2</ver>
+    <ver>4.5</ver>
   </compatibility>
-  <comments>This is a new, undeveloped module</comments>
+  <comments>Developed by Giant Rabbit LLC.</comments>
   <civix>
     <namespace>CRM/HookExtensions</namespace>
   </civix>
