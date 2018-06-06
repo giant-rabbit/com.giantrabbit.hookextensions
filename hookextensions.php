@@ -49,8 +49,8 @@ function hookextensions_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
 function hookextensions_civicrm_pre($op, $objectName, $id, &$params) {
   $objectName = hookextensions_normalizeObjectName($objectName);
   $hook_manager = CRM_Utils_Hook::singleton();
-  $hook_manager->invoke(2, $id, $params, $op, $op, $op, "civicrm_pre_{$objectName}_{$op}");
-  $hook_manager->invoke(3, $op, $id, $params, $op, $op, "civicrm_pre_{$objectName}");
+  $hook_manager->invoke(2, $id, $params, $op, $op, $op, $op, "civicrm_pre_{$objectName}_{$op}");
+  $hook_manager->invoke(3, $op, $id, $params, $op, $op, $op, "civicrm_pre_{$objectName}");
 }
 
 function hookextensions_civicrm_pre_Contact_edit($contact_id, &$contact) {
@@ -58,22 +58,34 @@ function hookextensions_civicrm_pre_Contact_edit($contact_id, &$contact) {
   hookextensions_static('old_contact', $old_contact);
 }
 
+function hookextensions_civicrm_pre_Address($op, $address_id, &$address) {
+  $old_address = CRM_HookExtensions_Utils::getAddressById($address_id);
+  hookextensions_static('old_address', $old_address);
+}
+
 function hookextensions_civicrm_pre_Email($op, $email_id, &$email) {
+  $old_email = CRM_HookExtensions_Utils::getEmailById($email_id);
+  hookextensions_static('old_email', $old_email);
   // We don't want to run this processing if the full contact record is edited
   // so we check for a static variable we're setting in the contact pre edit
   // hook and only continue if that is not set.
   $old_contact = hookextensions_static('old_contact');
   if (!$old_contact) {
-    // When an email is deleted, $email is empty, so we have to lookup the
-    // contact ID.
-    if (!empty($email['contact_id'])) {
-      $contact_id = $email['contact_id'];
-    }
-    else {
-      $email = CRM_HookExtensions_Utils::getEmailbyId($email_id);
-      $contact_id = $email->contact_id;
-    }
-    $old_contact_from_email = CRM_HookExtensions_Utils::getContactById($contact_id);
+    $old_contact_from_email = CRM_HookExtensions_Utils::getContactById($old_email->contact_id);
+    hookextensions_static('old_contact_from_email', $old_contact_from_email);
+  }
+}
+
+function hookextensions_civicrm_pre_UFMatch($op, $ufmatch_id, &$ufmatch) {
+  $old_ufmatch = CRM_HookExtensions_Utils::getUFMatchById($ufmatch_id);
+  $old_email = CRM_HookExtensions_Utils::getEmailByEmailAndContactId($old_ufmatch->uf_name, $old_ufmatch->contact_id);
+  hookextensions_static('old_email', $old_email);
+  // We don't want to run this processing if the full contact record is edited
+  // so we check for a static variable we're setting in the contact pre edit
+  // hook and only continue if that is not set.
+  $old_contact = hookextensions_static('old_contact');
+  if (!$old_contact) {
+    $old_contact_from_email = CRM_HookExtensions_Utils::getContactById($old_email->contact_id);
     hookextensions_static('old_contact_from_email', $old_contact_from_email);
   }
 }
@@ -110,8 +122,15 @@ function hookextensions_civicrm_pre_Membership_delete($object_id, &$object_ref)
 function hookextensions_civicrm_post($op, $objectName, $objectId, &$objectRef) {
   $objectName = hookextensions_normalizeObjectName($objectName);
   $hook_manager = CRM_Utils_Hook::singleton();
-  $hook_manager->invoke(2, $objectId, $objectRef, $op, $op, $op, "civicrm_post_{$objectName}_{$op}");
-  $hook_manager->invoke(3, $op, $objectId, $objectRef, $op, $op, "civicrm_post_{$objectName}");
+  $hook_manager->invoke(2, $objectId, $objectRef, $op, $op, $op, $op, "civicrm_post_{$objectName}_{$op}");
+  $hook_manager->invoke(3, $op, $objectId, $objectRef, $op, $op, $op, "civicrm_post_{$objectName}");
+}
+
+function hookextensions_civicrm_post_Address_edit($op, &$new_address) {
+  $old_address = hookextensions_static('old_address');
+  $hook_manager = CRM_Utils_Hook::singleton();
+  $nothing = NULL;
+  $hook_manager->invoke(2, $old_address, $new_address, $nothing, $nothing, $nothing, $nothing, "civicrm_address_updated");
 }
 
 function hookextensions_civicrm_post_GroupContact_create($group_id, &$contact_ids) {
@@ -121,7 +140,7 @@ function hookextensions_civicrm_post_GroupContact_create($group_id, &$contact_id
     foreach ($contacts_added_to_group as $contact_id) {
       $contact = CRM_HookExtensions_Utils::getContactById($contact_id);
       $hook_manager = CRM_Utils_Hook::singleton();
-      $hook_manager->invoke(2, $group, $contact, $group, $group, $group, "civicrm_contact_added_to_group");
+      $hook_manager->invoke(2, $group, $contact, $group, $group, $group, $group, "civicrm_contact_added_to_group");
     }
   }
 }
@@ -131,7 +150,7 @@ function hookextensions_civicrm_post_GroupContact_delete($group_id, &$contact_id
   foreach ($contact_ids as $contact_id) {
     $contact = CRM_HookExtensions_Utils::getContactById($contact_id);
     $hook_manager = CRM_Utils_Hook::singleton();
-    $hook_manager->invoke(2, $group, $contact, $group, $group, $group, "civicrm_contact_removed_from_group");
+    $hook_manager->invoke(2, $group, $contact, $group, $group, $group, $group, "civicrm_contact_removed_from_group");
   }
 }
 
@@ -141,16 +160,22 @@ function hookextensions_civicrm_post_Email($op, $email_id, &$email) {
   $old_contact = hookextensions_static('old_contact_from_email');
   if ($old_contact) {
     $new_contact = CRM_HookExtensions_Utils::getContactById($old_contact->id);
-    $hook_manager = CRM_Utils_Hook::singleton();
-    $hook_manager->invoke(2, $old_contact, $new_contact, $op, $op, $op, "civicrm_contact_updated");
+    hookextensions_notify_contact_update($old_contact, $new_contact);
   }
+}
+
+function hookextensions_civicrm_post_Email_edit($op, &$new_email) {
+  $old_email = hookextensions_static('old_email');
+  $hook_manager = CRM_Utils_Hook::singleton();
+  $nothing = NULL;
+  $hook_manager->invoke(2, $old_email, $new_email, $nothing, $nothing, $nothing, $nothing, "civicrm_email_updated");
 }
 
 function hookextensions_civicrm_post_Membership_create($object_id, &$membership)
 {
   $contact = CRM_HookExtensions_Utils::getContactById($membership->contact_id);
   $hook_manager = CRM_Utils_Hook::singleton();
-  $hook_manager->invoke(2, $membership, $contact, $object_id, $object_id, $object_id, "civicrm_contact_gained_membership");
+  $hook_manager->invoke(2, $membership, $contact, $object_id, $object_id, $object_id, $object_id, "civicrm_contact_gained_membership");
 }
 
 function hookextensions_civicrm_post_Membership_delete($object_id, &$object_ref)
@@ -158,21 +183,38 @@ function hookextensions_civicrm_post_Membership_delete($object_id, &$object_ref)
   $membership = hookextensions_static('deleted_membership');
   $contact = CRM_HookExtensions_Utils::getContactById($membership->contact_id);
   $hook_manager = CRM_Utils_Hook::singleton();
-  $hook_manager->invoke(2, $membership, $contact, $object_id, $object_id, $object_id, "civicrm_contact_lost_membership");
+  $hook_manager->invoke(2, $membership, $contact, $object_id, $object_id, $object_id, $object_id, "civicrm_contact_lost_membership");
 }
 
 function hookextensions_civicrm_post_Membership_edit($object_id, &$membership)
 {
   $contact = CRM_HookExtensions_Utils::getContactById($membership->contact_id);
   $hook_manager = CRM_Utils_Hook::singleton();
-  $hook_manager->invoke(2, $membership, $contact, $object_id, $object_id, $object_id, "civicrm_membership_updated");
+  $hook_manager->invoke(2, $membership, $contact, $object_id, $object_id, $object_id, $object_id, "civicrm_membership_updated");
+}
+
+function hookextensions_civicrm_post_UFMatch($op, $email_id, &$email) {
+  // We only want to run this if only the email address is changed since
+  // we're already handling the case where the full contact is editied.
+  $old_contact = hookextensions_static('old_contact_from_email');
+  if ($old_contact) {
+    $new_contact = CRM_HookExtensions_Utils::getContactById($old_contact->id);
+    hookextensions_notify_contact_update($old_contact, $new_contact);
+  }
+}
+
+function hookextensions_civicrm_post_UFMatch_edit($ufmatch_id, &$ufmatch) {
+  $old_email = hookextensions_static('old_email');
+  $new_email = clone($old_email);
+  $new_email->email = $ufmatch->uf_name;
+  $hook_manager = CRM_Utils_Hook::singleton();
+  $nothing = NULL;
+  $hook_manager->invoke(2, $old_email, $new_email, $nothing, $nothing, $nothing, $nothing, "civicrm_email_updated");
 }
 
 function hookextensions_civicrm_post_Contact_edit($contact_id, &$contact) {
   $old_contact = hookextensions_static('old_contact');
-  $new_contact = $contact;
-  $hook_manager = CRM_Utils_Hook::singleton();
-  $hook_manager->invoke(2, $old_contact, $new_contact, $contact_id, $contact_id, $contact_id, "civicrm_contact_updated");
+  hookextensions_notify_contact_update($old_contact, $contact);
 }
 
 function hookextensions_civicrm_post_Contact_delete($contact_id, &$contact) {
@@ -180,7 +222,7 @@ function hookextensions_civicrm_post_Contact_delete($contact_id, &$contact) {
   $contact_groups = CRM_Contact_BAO_Group::getGroups($params);
   foreach ($contact_groups as $group) {
     $hook_manager = CRM_Utils_Hook::singleton();
-    $hook_manager->invoke(2, $group, $contact, $contact_id, $contact_id, $contact_id, "civicrm_contact_removed_from_group");
+    $hook_manager->invoke(2, $group, $contact, $contact_id, $contact_id, $contact_id, $contact_id, "civicrm_contact_removed_from_group");
   }
 }
 
@@ -189,6 +231,12 @@ function hookextensions_normalizeObjectName($objectName) {
     return "Contact";
   }
   return $objectName;
+}
+
+function hookextensions_notify_contact_update($old_contact, $new_contact) {
+  $hook_manager = CRM_Utils_Hook::singleton();
+  $nothing = NULL;
+  $hook_manager->invoke(2, $old_contact, $new_contact, $nothing, $nothing, $nothing, $nothing, "civicrm_contact_updated");
 }
 
 function hookextensions_static($name, $new_value = NULL, $reset = FALSE) {
