@@ -52,11 +52,12 @@ class CRM_HookExtensions_Utils {
     $email = new CRM_Core_BAO_Email();
     $email->email = $email_str;
     $email->contact_id = $contact_id;
+    $email->orderBy('is_primary DESC');
     if ($email->email === NULL || $email->contact_id === NULL) {
-      throw new Exception("getEmailbyEmailAndContactID requires email ($email_str) and contact_id ($contact_id), but one or both were NULL.");
+      return NULL;
     }
     if (!$email->find(TRUE)) {
-      throw new Exception("Could not find Email record with email {$email->email} and contact_id {$email->contact_id}.");
+      return NULL;
     }
     return $email;
   }
@@ -77,6 +78,19 @@ class CRM_HookExtensions_Utils {
       throw new Exception("Could not find Group record with ID {$group_id}");
     }
     return $group;
+  }
+
+  static function getPrimaryEmailForContactId($contact_id) {
+    $email = new CRM_Core_BAO_Email();
+    $email->contact_id = $contact_id;
+    $email->is_primary = TRUE;
+    if ($email->contact_id === NULL) {
+      return NULL;
+    }
+    if (!$email->find(TRUE)) {
+      return NULL;
+    }
+    return $email;
   }
 
   static function getUFMatchById($ufmatch_id) {

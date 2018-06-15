@@ -79,7 +79,16 @@ function hookextensions_civicrm_pre_Email($op, $email_id, &$email) {
 function hookextensions_civicrm_pre_UFMatch($op, $ufmatch_id, &$ufmatch) {
   $old_ufmatch = CRM_HookExtensions_Utils::getUFMatchById($ufmatch_id);
   $old_email = CRM_HookExtensions_Utils::getEmailByEmailAndContactId($old_ufmatch->uf_name, $old_ufmatch->contact_id);
+  if ($old_email === NULL) {
+    $old_email = CRM_HookExtensions_Utils::getPrimaryEmailForContactId($old_ufmatch->contact_id);
+  }
+  if ($old_email === NULL) {
+    $old_email = new CRM_Core_BAO_Email();
+    $old_email->email = $old_ufmatch->uf_name;
+    $old_email->contact_id = $old_ufmatch->contact_id;
+  }
   hookextensions_static('old_email', $old_email);
+
   // We don't want to run this processing if the full contact record is edited
   // so we check for a static variable we're setting in the contact pre edit
   // hook and only continue if that is not set.
